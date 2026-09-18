@@ -1,6 +1,7 @@
 # Results / generated data
 Results/
 **/Results/
+Data analysis/codes/*.csv
 
 # Slurm logs
 *.out
