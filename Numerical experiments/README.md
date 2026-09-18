@@ -1,61 +1,70 @@
-# Numerical Experiments
+# Numerical experiments
 
-Simulation code accompanying *Privacy-Utility Trade-offs for Parameter Estimation
-in Degree-Heterogeneous Higher-Order Networks* (Mandal and Nandy). All code
-concerns the 3-uniform hypergraph beta-model, where each hyperedge
-`(i, j, k)` is included independently with probability
-`sigmoid(beta_i + beta_j + beta_k)`.
-
-Four estimators of `beta` are compared throughout:
-
-| Estimator  | Description |
-|---|---|
-| `ridge_np` | Non-private, ridge-regularized fit from the true degrees |
-| `mle_np`   | Non-private, unregularized (box-constrained) MLE |
-| `loc`      | Local-DP: discrete Laplace noise added to the degrees, then ridge fit |
-| `cen`      | Central-DP: noisy gradient descent (Gaussian noise per step) |
+Synthetic-data experiments for the r-uniform hypergraph β-model: differentially
+private (local + central) versus non-private (MLE + ridge) parameter
+estimation, under both parameter-recovery and link-prediction protocols. See
+the repo root README for the full method description and paper link.
 
 ## Layout
 
 ```
-Python_scripts/
-  vary_eps.py     Parameter-recovery experiment (NMSE of beta_hat vs beta_true)
-  pred_error.py   Link-prediction experiment (ROC-AUC / F1 / Brier / ECE on held-out hyperedges)
-
-Slurm_scripts/
-  vary_eps/vary_eps.sh   Slurm array launcher for vary_eps.py
-  pred_err/pred_err.sh   Slurm array launcher for pred_error.py
-
-Jupyter_notebooks/
-  combination.ipynb       Merges vary_eps.py's per-task CSVs, builds summary tables and
-                           the excess-risk-vs-n / excess-risk-vs-eps plots
-  combination_pred.ipynb  Merges pred_error.py's per-task CSVs and builds the
-                           link-prediction summary and privacy-cost LaTeX tables
-
-vary_eps.ipynb    Exploratory prototype of the parameter-recovery pipeline (L-BFGS-B
-                  based, predates the plain-gradient-descent Python_scripts version)
+Numerical experiments/
+├── Python_scripts/     Parameter-recovery (vary_eps.py) and link-prediction
+│                        (pred_error.py) experiment drivers
+├── Slurm_scripts/       One Slurm array-job launcher per experiment (mirrors
+│                        Python_scripts/)
+└── Jupyter_notebooks/   Aggregates each experiment's per-task CSVs into
+                          summary tables and plots
 ```
 
-## Running
+| Notebook | Script | Slurm job |
+|---|---|---|
+| `combination.ipynb` | `Python_scripts/vary_eps.py` | `Slurm_scripts/vary_eps/vary_eps.sh` |
+| `combination_pred.ipynb` | `Python_scripts/pred_error.py` | `Slurm_scripts/pred_err/pred_err.sh` |
+
+`vary_eps.ipynb` (top level) is an earlier, L-BFGS-B-based prototype of the
+`vary_eps.py` pipeline, kept for reference.
+
+Each experiment follows the same chain: a Slurm array job shards `R` Monte
+Carlo replicates across tasks (via `--rep_offset`), each task writes one CSV
+to `Results/<experiment>/<tag>_task###.csv`, and the matching notebook globs
+that directory to build the paper's tables and figures.
+
+Four estimators of `beta` are compared throughout (columns in the result
+CSVs use these prefixes):
+
+| Prefix | Estimator |
+|---|---|
+| `mle_np` | Non-private, unregularized (box-constrained) MLE |
+| `ridge_np` | Non-private, ridge-regularized fit |
+| `loc` | Local-DP: discrete Laplace noise on the degrees, then ridge fit |
+| `cen` | Central-DP: noisy gradient descent (Gaussian noise per step) |
+
+**Note:** the Slurm scripts hardcode a specific cluster's account/partition
+and an absolute `cd` path — update the `#SBATCH` header and working directory
+before submitting elsewhere.
+
+## Running an experiment
 
 Both scripts are standalone CLIs and can be run directly, e.g.:
 
 ```bash
-python Python_scripts/vary_eps.py \
+python "Numerical experiments/Python_scripts/vary_eps.py" \
   --outdir Results/vary_eps --tag n200_r3 \
   --n 200 --r 3 --M 1.0 --p0 0.3 --mean 0.5 --sd 0.02 --c_lam 0.0001 \
   --eps_list "1e-4,1e-3,1e-2,1e-1,1.0" --R 50 --reps_per_task 50 \
   --T_cap 10000 --maxiter_mle 10000
 ```
 
-The Slurm scripts in `Slurm_scripts/` shard the `R` Monte Carlo replicates across
-a job array (via `--rep_offset`) and were written for a specific SGE/Slurm
-cluster account/partition — update the `#SBATCH` header and the `cd` target at
-the top of each script before submitting elsewhere.
+At scale, submit the matching Slurm array job (after adjusting it for your
+cluster, per the note above):
 
-Each task writes one CSV to `Results/<tag>_task###.csv`; run the matching
-notebook in `Jupyter_notebooks/` afterward to merge them and reproduce the
-paper's tables and figures.
+```bash
+sbatch "Numerical experiments/Slurm_scripts/vary_eps/vary_eps.sh"
+```
+
+Once all array tasks finish, run the corresponding notebook in
+`Jupyter_notebooks/` to aggregate results into the paper's tables and figures.
 
 ## Results
 
