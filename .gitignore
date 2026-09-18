@@ -1,0 +1,23 @@
+# Results / generated data
+Results/
+**/Results/
+
+# Slurm logs
+*.out
+*.err
+*.log
+
+# Figures
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.pdf
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
